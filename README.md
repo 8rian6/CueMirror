@@ -69,3 +69,5 @@ This project is unofficial and is not affiliated with or endorsed by Algoriddim,
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+If CueMirror is useful to you, please consider starring the GitHub repository. It helps other DJs discover the project and lets me know that continued development is worthwhile.
