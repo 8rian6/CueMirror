@@ -527,7 +527,7 @@ final class AnlzScanner {
         ) == "PCO2" else {
             return invalidSection(
                 offset: offset,
-                message: "区块开头不是 PCO2。"
+                message: L("区块开头不是 PCO2。")
             )
         }
 
@@ -554,7 +554,7 @@ final class AnlzScanner {
 
             return invalidSection(
                 offset: offset,
-                message: "PCO2头部长度不足。"
+                message: L("PCO2头部长度不足。")
             )
         }
 
@@ -575,7 +575,7 @@ final class AnlzScanner {
                 listTypeRaw: listType,
                 declaredCueCount: cueCount,
                 message:
-                    "PCO2 headerLength 小于20。"
+                    L("PCO2 headerLength 小于20。")
             )
         }
 
@@ -587,7 +587,7 @@ final class AnlzScanner {
                 listTypeRaw: listType,
                 declaredCueCount: cueCount,
                 message:
-                    "PCO2 totalLength 小于 headerLength。"
+                    L("PCO2 totalLength 小于 headerLength。")
             )
         }
 
@@ -601,7 +601,7 @@ final class AnlzScanner {
                 listTypeRaw: listType,
                 declaredCueCount: cueCount,
                 message:
-                    "PCO2区块超出文件边界。"
+                    L("PCO2区块超出文件边界。")
             )
         }
 
@@ -612,7 +612,7 @@ final class AnlzScanner {
         for cueIndex in 0..<cueCount {
             guard cursor + 12 <= sectionEnd else {
                 parseError =
-                    "第 \(cueIndex + 1) 个Cue头部超出PCO2边界。"
+                    LF("第 %lld 个Cue头部超出PCO2边界。", cueIndex + 1)
                 break
             }
 
@@ -639,7 +639,7 @@ final class AnlzScanner {
                     ) else {
 
                 parseError =
-                    "无法读取第 \(cueIndex + 1) 个PCP2长度。"
+                    LF("无法读取第 %lld 个PCP2长度。", cueIndex + 1)
                 break
             }
 
@@ -696,7 +696,7 @@ final class AnlzScanner {
                     ) else {
 
                 parseError =
-                    "第 \(cueIndex + 1) 个PCP2基本字段读取失败。"
+                    LF("第 %lld 个PCP2基本字段读取失败。", cueIndex + 1)
                 break
             }
 

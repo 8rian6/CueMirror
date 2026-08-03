@@ -8,11 +8,11 @@ enum AnlzFormatError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case let .truncated(offset, needed):
-            return "ANLZ 在偏移 \(offset) 缺少 \(needed) 字节。"
+            return LF("ANLZ 在偏移 %lld 缺少 %lld 字节。", offset, needed)
         case let .invalidMagic(expected, actual):
-            return "ANLZ 标记错误：期望 \(expected)，实际 \(actual)。"
+            return LF("ANLZ 标记错误：期望 %@，实际 %@。", expected, actual)
         case let .invalidLength(offset, header, total):
-            return "ANLZ 长度错误：offset=\(offset), header=\(header), total=\(total)。"
+            return LF("ANLZ 长度错误：offset=%lld, header=%lld, total=%lld。", offset, header, total)
         }
     }
 }

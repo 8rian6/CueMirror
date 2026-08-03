@@ -43,11 +43,11 @@ struct HotCueMemoryReplacementWriter {
         let sources = extendedHot.cues.filter { (9...16).contains($0.hotCueNumber) }
         guard !sources.isEmpty else { throw HotCueMemoryReplacementError.noSources }
         guard sources.allSatisfy({ $0.cueType == 1 }) else {
-            throw HotCueMemoryReplacementError.unsupportedCue("HC09–HC16 中包含 Loop")
+            throw HotCueMemoryReplacementError.unsupportedCue(L("HC09–HC16 中包含 Loop"))
         }
         let grouped = Dictionary(grouping: sources, by: { $0.timeMs })
         guard grouped.values.allSatisfy({ $0.count == 1 }) else {
-            throw HotCueMemoryReplacementError.duplicateOrConflict("HC09–HC16 存在相同开始时间，整首曲目已跳过。")
+            throw HotCueMemoryReplacementError.duplicateOrConflict(L("HC09–HC16 存在相同开始时间，整首曲目已跳过。"))
         }
         let sortedSources = sources.sorted {
             if $0.timeMs != $1.timeMs { return $0.timeMs < $1.timeMs }
@@ -126,14 +126,14 @@ struct HotCueMemoryReplacementWriter {
         let datReadback = try AnlzDocument.parse(outputDAT)
         let extReadback = try AnlzDocument.parse(outputEXT)
         guard datReadback.encoded() == outputDAT, extReadback.encoded() == outputEXT else {
-            throw HotCueMemoryReplacementError.verificationFailed("ANLZ 逐字节往返失败")
+            throw HotCueMemoryReplacementError.verificationFailed(L("ANLZ 逐字节往返失败"))
         }
         guard hotSections(datReadback) == datHotBefore, hotSections(extReadback) == extHotBefore else {
-            throw HotCueMemoryReplacementError.verificationFailed("原 Hot Cue 区块发生变化")
+            throw HotCueMemoryReplacementError.verificationFailed(L("原 Hot Cue 区块发生变化"))
         }
         let expectedTimes = sortedSources.map(\.timeMs)
         guard memoryTimes(datReadback) == expectedTimes, memoryTimes(extReadback) == expectedTimes else {
-            throw HotCueMemoryReplacementError.verificationFailed("Memory Cue 时间或排序不一致")
+            throw HotCueMemoryReplacementError.verificationFailed(L("Memory Cue 时间或排序不一致"))
         }
         return HotCueMemoryReplacementResult(
             datData: outputDAT,

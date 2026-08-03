@@ -77,7 +77,7 @@ struct ContentView: View {
                     ProgressView()
                         .progressViewStyle(.linear)
                     HStack {
-                        Text("已扫描 \(model.scannedFileCount) 个 ANLZ 文件")
+                        Text(LF("已扫描 %lld 个 ANLZ 文件", model.scannedFileCount))
                         Spacer()
                         Text(model.currentScanPath)
                             .lineLimit(1)
@@ -115,7 +115,7 @@ struct ContentView: View {
                         .foregroundStyle(summary.databaseExists ? Color.green : Color.red)
                     Text(summary.databaseExists ? L("已找到") : L("未找到")).fontWeight(.medium)
                     if let count = summary.databaseCueRowCount {
-                        Text("数据库 cue 行：\(count)")
+                        Text(LF("数据库 cue 行：%lld", count))
                             .foregroundStyle(.secondary)
                     }
                     Text(summary.databasePath)
@@ -152,7 +152,7 @@ struct ContentView: View {
                         } label: {
                             Label("全选所有 Playlist", systemImage: allPlaylistsSelected(summary) ? "checkmark.square.fill" : "square")
                         }
-                        Text("已选择 \(model.selectedTrackIDs.count) 首")
+                        Text(LF("已选择 %lld 首", model.selectedTrackIDs.count))
                             .foregroundStyle(.secondary)
                         Spacer()
                     }
@@ -199,7 +199,7 @@ struct ContentView: View {
                                 .frame(width: 12)
                             Image(systemName: "music.note.list")
                             Text(playlist.name).fontWeight(.semibold)
-                            Text("\(playlist.allTrackIDs.count) 首")
+                            Text(LF("%lld 首", playlist.allTrackIDs.count))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -248,9 +248,9 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(track.title)
                             HStack(spacing: 10) {
-                                Text("Hot Cue \(track.hotCues.count)")
-                                Text("旧 Memory \(track.existingMemoryCueCount)")
-                                Text("将生成 \(track.generatedMemoryCueCount)")
+                                Text(LF("Hot Cue %lld", track.hotCues.count))
+                                Text(LF("旧 Memory %lld", track.existingMemoryCueCount))
+                                Text(LF("将生成 %lld", track.generatedMemoryCueCount))
                                 if let reason = track.conversionSkipReason {
                                     Text(reason).foregroundStyle(.orange)
                                 }
@@ -283,11 +283,11 @@ struct ContentView: View {
                 .foregroundStyle(cue.isLoop ? .orange : .green)
             VStack(alignment: .leading, spacing: 4) {
                 Text(cue.slotLabel).fontWeight(.semibold)
-                Text("时间 \(formatMilliseconds(cue.timeMs)) · \(cue.cueTypeName)")
+                Text(LF("时间 %@ · %@", formatMilliseconds(cue.timeMs), cue.cueTypeName))
                 if cue.isLoop {
-                    Text("Loop 终点 \(formatMilliseconds(cue.loopTimeMs))")
+                    Text(LF("Loop 终点 %@", formatMilliseconds(cue.loopTimeMs)))
                 }
-                if !cue.comment.isEmpty { Text("评论：\(cue.comment)") }
+                if !cue.comment.isEmpty { Text(LF("评论：%@", cue.comment)) }
                 HStack(spacing: 6) {
                     colorSwatch(for: cue)
                     Text(cue.colorDescription)
@@ -327,15 +327,15 @@ struct ContentView: View {
                                 .font(.system(.body, design: .monospaced))
                                 .textSelection(.enabled)
                             HStack(spacing: 14) {
-                                Text("将删除旧 Memory：\(report.replacementPlan.deletedMemoryCueCount)")
-                                Text("HC09–16：\(report.memoryCueCandidates.count)")
-                                Text("将生成：\(report.projectedMemoryCueCount)")
+                                Text(LF("将删除旧 Memory：%lld", report.replacementPlan.deletedMemoryCueCount))
+                                Text(LF("HC09–16：%lld", report.memoryCueCandidates.count))
+                                Text(LF("将生成：%lld", report.projectedMemoryCueCount))
                                 if report.hasCapacityConflict {
                                     Label(report.replacementPlan.skipReason ?? L("存在冲突"), systemImage: "exclamationmark.triangle.fill")
                                         .foregroundStyle(.orange)
                                 }
                                 if report.parseErrorCount > 0 {
-                                    Text("解析错误：\(report.parseErrorCount)").foregroundStyle(.red)
+                                    Text(LF("解析错误：%lld", report.parseErrorCount)).foregroundStyle(.red)
                                 }
                             }.font(.caption).foregroundStyle(.secondary)
                         }
@@ -351,11 +351,11 @@ struct ContentView: View {
                 .foregroundStyle(candidate.isConvertible ? .green : .orange)
             VStack(alignment: .leading, spacing: 4) {
                 Text(candidate.displayName).fontWeight(.semibold)
-                Text("时间 \(formatMilliseconds(candidate.sourceCue.timeMs)) · \(candidate.sourceCue.cueTypeName)")
+                Text(LF("时间 %@ · %@", formatMilliseconds(candidate.sourceCue.timeMs), candidate.sourceCue.cueTypeName))
                 if candidate.sourceCue.isLoop {
-                    Text("Loop 终点 \(formatMilliseconds(candidate.sourceCue.loopTimeMs))")
+                    Text(LF("Loop 终点 %@", formatMilliseconds(candidate.sourceCue.loopTimeMs)))
                 }
-                if !candidate.sourceCue.comment.isEmpty { Text("评论：\(candidate.sourceCue.comment)") }
+                if !candidate.sourceCue.comment.isEmpty { Text(LF("评论：%@", candidate.sourceCue.comment)) }
                 HStack(spacing: 6) {
                     colorSwatch(for: candidate.sourceCue)
                     Text(candidate.sourceCue.colorDescription)
@@ -384,7 +384,7 @@ struct ContentView: View {
                     RoundedRectangle(cornerRadius: 3)
                         .stroke(Color.primary.opacity(0.35), lineWidth: 1)
                 }
-                .accessibilityLabel("颜色 \(cue.colorDescription)")
+                .accessibilityLabel(LF("颜色 %@", cue.colorDescription))
         } else {
             Image(systemName: "circle.slash")
                 .frame(width: 18, height: 18)

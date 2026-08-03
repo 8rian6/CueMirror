@@ -18,13 +18,13 @@ enum ExperimentalMemoryCueWriterError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedCueTime: return "Cue 时间超出 ANLZ 毫秒字段范围。"
-        case .missingMemoryCueList(let file): return "\(file) 缺少可克隆的 Memory Cue 列表。"
-        case .duplicateCue(let time): return "\(time) ms 已存在 Memory Cue。"
-        case .unsupportedTemplate: return "现有 Memory Cue 模板不是已验证的 88 字节普通 FLAC Cue。"
-        case .invalidLocatorStorage: return "Memory PCP2 定位字段长度不符合已验证结构。"
-        case .verificationFailed(let reason): return "写后验证失败：\(reason)"
-        case .sourceAndOutputAreSame: return "实验写入器禁止覆盖来源目录。"
+        case .unsupportedCueTime: return L("Cue 时间超出 ANLZ 毫秒字段范围。")
+        case .missingMemoryCueList(let file): return LF("%@ 缺少可克隆的 Memory Cue 列表。", file)
+        case .duplicateCue(let time): return LF("%lld ms 已存在 Memory Cue。", time)
+        case .unsupportedTemplate: return L("现有 Memory Cue 模板不是已验证的 88 字节普通 FLAC Cue。")
+        case .invalidLocatorStorage: return L("Memory PCP2 定位字段长度不符合已验证结构。")
+        case .verificationFailed(let reason): return LF("写后验证失败：%@", reason)
+        case .sourceAndOutputAreSame: return L("实验写入器禁止覆盖来源目录。")
         }
     }
 }
@@ -202,11 +202,11 @@ struct ExperimentalFLACMemoryCueWriter {
         let parsedDAT = try AnlzDocument.parse(dat)
         let parsedEXT = try AnlzDocument.parse(ext)
         guard parsedDAT.encoded() == dat, parsedEXT.encoded() == ext else {
-            throw ExperimentalMemoryCueWriterError.verificationFailed("ANLZ 无损回读不一致")
+            throw ExperimentalMemoryCueWriterError.verificationFailed(L("ANLZ 无损回读不一致"))
         }
         guard hotSections(in: parsedDAT) == originalDATHot,
               hotSections(in: parsedEXT) == originalEXTHot else {
-            throw ExperimentalMemoryCueWriterError.verificationFailed("原 Hot Cue 区块发生变化")
+            throw ExperimentalMemoryCueWriterError.verificationFailed(L("原 Hot Cue 区块发生变化"))
         }
         let datCue = parsedDAT.sections.compactMap { section -> AnlzCue? in
             guard case .cueList(let list) = section.content, list.listType == 0 else { return nil }
@@ -221,7 +221,7 @@ struct ExperimentalFLACMemoryCueWriter {
               extCue?.unknownWordsAfterColor[safe: 1] == UInt32(location.decodingStartFramePosition),
               extCue?.trailing.uint32BE(at: 0) == UInt32(location.fileOffsetInBlock),
               extCue?.trailing.uint32BE(at: 12) == location.numberOfSamplesInBlock else {
-            throw ExperimentalMemoryCueWriterError.verificationFailed("新 Memory Cue 字段不匹配")
+            throw ExperimentalMemoryCueWriterError.verificationFailed(L("新 Memory Cue 字段不匹配"))
         }
     }
 }

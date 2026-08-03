@@ -174,7 +174,7 @@ final class CueMirrorViewModel: ObservableObject {
                 try item.result.extData.write(to: item.extURL, options: .atomic)
                 guard try Data(contentsOf: item.datURL, options: .mappedIfSafe) == item.result.datData,
                       try Data(contentsOf: item.extURL, options: .mappedIfSafe) == item.result.extData else {
-                    throw HotCueMemoryReplacementError.verificationFailed("\(item.title) 的 U 盘正式文件回读不一致")
+                    throw HotCueMemoryReplacementError.verificationFailed(LF("%@ 的 U 盘正式文件回读不一致", item.title))
                 }
                 completed += 1
             }
