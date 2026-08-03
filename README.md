@@ -4,6 +4,16 @@ CueMirror is an experimental macOS utility that converts djay Pro Hot Cues 9–1
 
 > CueMirror is still in testing. Back up your USB drive data before using it.
 
+## Screenshots
+
+Select the root of the OneLibrary USB drive—do not select its `PIONEER` or `USBANLZ` subfolder.
+
+![Selecting the root of a OneLibrary USB drive in CueMirror](docs/images/select-onelibrary-usb.png)
+
+Review the selected tracks and projected changes before confirming the Memory Cue replacement.
+
+![CueMirror confirmation before replacing Memory Cues on the USB drive](docs/images/confirm-memory-cue-replacement.png)
+
 ## Current support
 
 - macOS 15.2 or later on Apple silicon
