@@ -28,9 +28,14 @@ enum HotCueMemoryReplacementError: LocalizedError {
     }
 }
 
-/// 清除旧 Memory Cue，并用 HC09–HC16 重建普通 FLAC Memory Cue 集合。
+/// 清除旧 Memory Cue，并使用调用方提供的格式定位器从 HC09–HC16 重建 Memory Cue 集合。
 struct HotCueMemoryReplacementWriter {
-    func makeOutput(datData: Data, extData: Data, audioFile: URL) throws -> HotCueMemoryReplacementResult {
+    func makeOutput(
+        datData: Data,
+        extData: Data,
+        audioFile: URL,
+        locator: any AudioCueLocating = FLACAudioCueLocator()
+    ) throws -> HotCueMemoryReplacementResult {
         var dat = try AnlzDocument.parse(datData)
         var ext = try AnlzDocument.parse(extData)
         let datHotBefore = hotSections(dat)
@@ -65,7 +70,6 @@ struct HotCueMemoryReplacementWriter {
         let datTemplate = existingDATMemory?.cues.first
         let extTemplate = existingEXTMemory?.cues.first.flatMap(isUsableMemoryTemplate(_:))
 
-        let locator = FLACAudioCueLocator()
         var newPCPT: [AnlzCue] = []
         var newPCP2: [AnlzExtendedCue] = []
         for (index, source) in sortedSources.enumerated() {

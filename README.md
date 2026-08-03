@@ -18,11 +18,12 @@ Review the selected tracks and projected changes before confirming the Memory Cu
 
 - macOS 15.2 or later on Apple silicon
 - OneLibrary USB drives exported by djay Pro
-- The conversion model is theoretically applicable to all audio formats (FLAC has been tested; other formats have not yet been tested or enabled)
+- FLAC using the hardware-verified conversion path
+- Experimental WAV, AIFF, and MP3 support through an opt-in setting (audio locating is tested in software; CDJ hardware results need community testing)
 - Point cues in Hot Cue slots 9–16
 - Batch selection by playlist or track
 
-CueMirror preserves Hot Cues, but replaces all existing Memory Cues on each selected track. Hot Cue loops and non-FLAC audio are currently skipped.
+CueMirror preserves Hot Cues, but replaces all existing Memory Cues on each selected track. Hot Cue loops are currently skipped. Non-FLAC tracks are skipped unless the experimental audio formats setting is explicitly enabled.
 
 ## Using CueMirror
 
@@ -35,10 +36,13 @@ CueMirror preserves Hot Cues, but replaces all existing Memory Cues on each sele
 2. Back up the USB drive.
 3. Open CueMirror and select the root of the OneLibrary drive.
 4. Review the scan results and select tracks or playlists.
-5. Confirm the replacement operation.
-6. Safely eject the drive and verify it on compatible hardware before relying on it for a performance.
+5. For WAV, AIFF, or MP3 tracks, enable **Experimental WAV / AIFF / MP3**. Leave it off for the verified FLAC-only path.
+6. Confirm the replacement operation. CueMirror shows an additional warning when experimental tracks are included.
+7. Safely eject the drive and verify it on compatible hardware before relying on it for a performance.
 
 If Python 3.14 is missing, CueMirror displays the same installation command in the app. Python is used only for the read-only SQLCipher database query; CueMirror works on a temporary copy and does not connect directly to the database on the USB drive.
+
+Experimental formats are located only when selected tracks are prepared for writing; adding more recognized formats does not make the normal USB scan slower. WAV and AIFF use macOS packet metadata, while MP3 frames are parsed once per track and reused for all its cues. These paths have automated software tests but still require reports from real CDJ/XDJ hardware.
 
 ## Building
 

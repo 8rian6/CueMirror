@@ -34,6 +34,21 @@ final class HotCueMemoryReplacementWriterTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: extURL), extBefore)
     }
 
+    func testWriterUsesInjectedExperimentalLocatorWithoutChangingSources() throws {
+        let datBefore = try Data(contentsOf: datURL)
+        let extBefore = try Data(contentsOf: extURL)
+        let result = try HotCueMemoryReplacementWriter().makeOutput(
+            datData: datBefore,
+            extData: extBefore,
+            audioFile: URL(fileURLWithPath: "/nonexistent/experimental.wav"),
+            locator: StubAudioCueLocator()
+        )
+
+        XCTAssertEqual(result.generatedMemoryCueCount, 5)
+        XCTAssertEqual(try Data(contentsOf: datURL), datBefore)
+        XCTAssertEqual(try Data(contentsOf: extURL), extBefore)
+    }
+
     private func memoryTimes(_ document: AnlzDocument) -> [UInt32] {
         document.sections.flatMap {
             switch $0.content {
@@ -49,6 +64,21 @@ final class HotCueMemoryReplacementWriterTests: XCTestCase {
             guard case .extendedCueList(let list) = section.content, list.listType == 0 else { return [] }
             return list.cues.compactMap(\.colorID)
         }
+    }
+}
+
+private struct StubAudioCueLocator: AudioCueLocating {
+    func locateCue(atMilliseconds timeMs: UInt64, in audioFile: URL) throws -> AudioCueLocation {
+        AudioCueLocation(
+            decodingStartFramePosition: timeMs,
+            fileOffsetInBlock: timeMs * 2,
+            numberOfSamplesInBlock: 1,
+            targetSamplePosition: timeMs,
+            frameEndSamplePosition: timeMs + 1,
+            absoluteFileOffset: timeMs * 2,
+            audioStreamOffset: 0,
+            usesVariableBlockStrategy: false
+        )
     }
 }
 

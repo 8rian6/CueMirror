@@ -1,3 +1,4 @@
+import AudioToolbox
 import Foundation
 
 struct AudioCueLocation: Equatable {
@@ -24,6 +25,10 @@ enum AudioCueLocatorError: LocalizedError, Equatable {
     case missingStreamInfo
     case invalidStreamInfo
     case frameNotFound(targetSample: UInt64)
+    case systemAudioError(Int32)
+    case invalidPacketInfo
+    case unsupportedExperimentalFile
+    case experimentalFrameNotFound(targetSample: UInt64)
 
     var errorDescription: String? {
         switch self {
@@ -32,7 +37,201 @@ enum AudioCueLocatorError: LocalizedError, Equatable {
         case .missingStreamInfo: return L("FLAC 缺少 STREAMINFO。")
         case .invalidStreamInfo: return L("FLAC STREAMINFO 无效。")
         case .frameNotFound(let sample): return LF("找不到包含样本 %llu 的 FLAC frame。", sample)
+        case .systemAudioError(let status): return LF("系统音频解析失败（错误码 %d）。", status)
+        case .invalidPacketInfo: return L("无法取得目标音频数据包的定位信息。")
+        case .unsupportedExperimentalFile: return L("无法解析该实验性音频文件。")
+        case .experimentalFrameNotFound(let sample): return LF("找不到包含样本 %llu 的实验性音频帧。", sample)
         }
+    }
+}
+
+/// 实验性通用定位器。使用 macOS AudioToolbox 获取 WAV/AIFF/MP3 的真实数据包位置，
+/// 与已经验证的 FLAC 定位器完全隔离。
+struct SystemAudioCueLocator: AudioCueLocating {
+    func locateCue(atMilliseconds timeMs: UInt64, in audioFile: URL) throws -> AudioCueLocation {
+        var audioFileID: AudioFileID?
+        let openStatus = AudioFileOpenURL(audioFile as CFURL, .readPermission, 0, &audioFileID)
+        guard openStatus == noErr, let audioFileID else {
+            throw AudioCueLocatorError.systemAudioError(openStatus)
+        }
+        defer { AudioFileClose(audioFileID) }
+
+        var format = AudioStreamBasicDescription()
+        var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        let formatStatus = AudioFileGetProperty(
+            audioFileID, kAudioFilePropertyDataFormat, &formatSize, &format
+        )
+        guard formatStatus == noErr, format.mSampleRate > 0 else {
+            throw AudioCueLocatorError.systemAudioError(formatStatus)
+        }
+
+        var packetCount: Int64 = 0
+        var packetCountSize = UInt32(MemoryLayout<Int64>.size)
+        let countStatus = AudioFileGetProperty(
+            audioFileID, kAudioFilePropertyAudioDataPacketCount, &packetCountSize, &packetCount
+        )
+        guard countStatus == noErr, packetCount > 0 else {
+            throw AudioCueLocatorError.systemAudioError(countStatus)
+        }
+
+        let targetSample = UInt64((Double(timeMs) * format.mSampleRate / 1_000).rounded(.down))
+        var frameTranslation = AudioFramePacketTranslation(
+            mFrame: Int64(targetSample), mPacket: 0, mFrameOffsetInPacket: 0
+        )
+        var frameTranslationSize = UInt32(MemoryLayout<AudioFramePacketTranslation>.size)
+        let frameStatus = AudioFileGetProperty(
+            audioFileID, kAudioFilePropertyFrameToPacket,
+            &frameTranslationSize, &frameTranslation
+        )
+        guard frameStatus == noErr, frameTranslation.mPacket >= 0 else {
+            throw AudioCueLocatorError.systemAudioError(frameStatus)
+        }
+        let targetPacket = min(frameTranslation.mPacket, packetCount - 1)
+        var translation = AudioBytePacketTranslation(
+            mByte: 0,
+            mPacket: targetPacket,
+            mByteOffsetInPacket: 0,
+            mFlags: []
+        )
+        var translationSize = UInt32(MemoryLayout<AudioBytePacketTranslation>.size)
+        let packetStatus = AudioFileGetProperty(
+            audioFileID, kAudioFilePropertyPacketToByte, &translationSize, &translation
+        )
+        guard packetStatus == noErr, translation.mByte >= 0,
+              !translation.mFlags.contains(.bytePacketTranslationFlag_IsEstimate) else {
+            throw AudioCueLocatorError.invalidPacketInfo
+        }
+
+        let firstSample = targetSample - UInt64(frameTranslation.mFrameOffsetInPacket)
+        let packetFrames: UInt32
+        if targetPacket + 1 < packetCount {
+            var nextFrame = AudioFramePacketTranslation(
+                mFrame: 0, mPacket: targetPacket + 1, mFrameOffsetInPacket: 0
+            )
+            var nextFrameSize = UInt32(MemoryLayout<AudioFramePacketTranslation>.size)
+            let nextStatus = AudioFileGetProperty(
+                audioFileID, kAudioFilePropertyPacketToFrame, &nextFrameSize, &nextFrame
+            )
+            guard nextStatus == noErr, nextFrame.mFrame > Int64(firstSample),
+                  nextFrame.mFrame - Int64(firstSample) <= Int64(UInt32.max) else {
+                throw AudioCueLocatorError.invalidPacketInfo
+            }
+            packetFrames = UInt32(nextFrame.mFrame - Int64(firstSample))
+        } else {
+            packetFrames = max(format.mFramesPerPacket, 1)
+        }
+        return AudioCueLocation(
+            decodingStartFramePosition: firstSample,
+            fileOffsetInBlock: UInt64(translation.mByte),
+            numberOfSamplesInBlock: packetFrames,
+            targetSamplePosition: targetSample,
+            frameEndSamplePosition: firstSample + UInt64(packetFrames),
+            absoluteFileOffset: UInt64(translation.mByte),
+            audioStreamOffset: 0,
+            usesVariableBlockStrategy: false
+        )
+    }
+}
+
+/// 实验性 MP3 定位器。逐个验证 MPEG 音频帧头，避免使用系统返回的估算字节位置。
+final class MP3AudioCueLocator: AudioCueLocating {
+    private var cachedURL: URL?
+    private var cachedFrames: [LocatedFrame] = []
+
+    func locateCue(atMilliseconds timeMs: UInt64, in audioFile: URL) throws -> AudioCueLocation {
+        if cachedURL != audioFile {
+            try load(audioFile)
+        }
+        guard let first = cachedFrames.first else {
+            throw AudioCueLocatorError.unsupportedExperimentalFile
+        }
+        let targetSample = UInt64((Double(timeMs) * Double(first.frame.sampleRate) / 1_000).rounded(.down))
+        guard let located = cachedFrames.first(where: {
+            targetSample >= $0.firstSample && targetSample < $0.firstSample + UInt64($0.frame.sampleCount)
+        }) else {
+            throw AudioCueLocatorError.experimentalFrameNotFound(targetSample: targetSample)
+        }
+        return AudioCueLocation(
+            decodingStartFramePosition: located.firstSample,
+            fileOffsetInBlock: UInt64(located.offset - first.offset),
+            numberOfSamplesInBlock: located.frame.sampleCount,
+            targetSamplePosition: targetSample,
+            frameEndSamplePosition: located.firstSample + UInt64(located.frame.sampleCount),
+            absoluteFileOffset: UInt64(located.offset),
+            audioStreamOffset: UInt64(first.offset),
+            usesVariableBlockStrategy: false
+        )
+    }
+
+    private func load(_ audioFile: URL) throws {
+        let data = try Data(contentsOf: audioFile, options: .mappedIfSafe)
+        var cursor = id3v2End(in: data)
+        var firstSample: UInt64 = 0
+        var frames: [LocatedFrame] = []
+
+        while cursor + 4 <= data.count {
+            guard let frame = parseFrame(in: data, at: cursor) else {
+                cursor += 1
+                continue
+            }
+            frames.append(LocatedFrame(offset: cursor, firstSample: firstSample, frame: frame))
+            firstSample += UInt64(frame.sampleCount)
+            cursor += frame.byteCount
+        }
+        guard !frames.isEmpty else { throw AudioCueLocatorError.unsupportedExperimentalFile }
+        cachedURL = audioFile
+        cachedFrames = frames
+    }
+
+    private struct Frame {
+        let byteCount: Int
+        let sampleCount: UInt32
+        let sampleRate: UInt32
+    }
+
+    private struct LocatedFrame {
+        let offset: Int
+        let firstSample: UInt64
+        let frame: Frame
+    }
+
+    private func id3v2End(in data: Data) -> Int {
+        guard data.count >= 10, data.prefix(3) == Data("ID3".utf8) else { return 0 }
+        let sizeBytes = data[6...9]
+        guard sizeBytes.allSatisfy({ $0 & 0x80 == 0 }) else { return 0 }
+        let size = sizeBytes.reduce(0) { ($0 << 7) | Int($1) }
+        let footer = data[5] & 0x10 != 0 ? 10 : 0
+        return min(data.count, 10 + size + footer)
+    }
+
+    private func parseFrame(in data: Data, at offset: Int) -> Frame? {
+        guard offset + 4 <= data.count else { return nil }
+        let header = UInt32(data[offset]) << 24 | UInt32(data[offset + 1]) << 16 |
+            UInt32(data[offset + 2]) << 8 | UInt32(data[offset + 3])
+        guard header & 0xffe0_0000 == 0xffe0_0000 else { return nil }
+        let versionBits = Int((header >> 19) & 0x3)
+        let layerBits = Int((header >> 17) & 0x3)
+        let bitrateIndex = Int((header >> 12) & 0xf)
+        let sampleRateIndex = Int((header >> 10) & 0x3)
+        let padding = Int((header >> 9) & 0x1)
+        guard versionBits != 1, layerBits == 1,
+              (1...14).contains(bitrateIndex), sampleRateIndex < 3 else { return nil }
+
+        let version1 = versionBits == 3
+        let bitratesV1 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
+        let bitratesV2 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160]
+        let bitrate = (version1 ? bitratesV1 : bitratesV2)[bitrateIndex] * 1_000
+        let baseRates = [44_100, 48_000, 32_000]
+        let divisor = versionBits == 3 ? 1 : (versionBits == 2 ? 2 : 4)
+        let sampleRate = baseRates[sampleRateIndex] / divisor
+        let coefficient = version1 ? 144 : 72
+        let byteCount = coefficient * bitrate / sampleRate + padding
+        guard byteCount >= 4, offset + byteCount <= data.count else { return nil }
+        return Frame(
+            byteCount: byteCount,
+            sampleCount: version1 ? 1_152 : 576,
+            sampleRate: UInt32(sampleRate)
+        )
     }
 }
 
