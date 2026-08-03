@@ -11,6 +11,7 @@ __pycache__/
 
 # Release output
 dist/
+/icon.png
 
 # Large recordings do not belong in the CueMirror source repository.
 *.mp4
