@@ -70,4 +70,12 @@ This project is unofficial and is not affiliated with or endorsed by Algoriddim,
 
 MIT. See [LICENSE](LICENSE).
 
-If CueMirror is useful to you, please consider starring the GitHub repository. It helps other DJs discover the project and lets me know that continued development is worthwhile.
+## Support the project
+
+If CueMirror is useful to you, please consider starring this repository.
+
+A GitHub Star helps other OneLibrary and DJ users discover the project,
+and it lets me know that continued development and compatibility work
+are worthwhile.
+
+Click **Star** at the top-right of this page.
