@@ -30,7 +30,8 @@ enum OneLibraryDatabaseError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .pythonUnavailable: return L("没有找到用于只读 SQLCipher 查询的 Python 3.14。")
+        case .pythonUnavailable:
+            return L("未找到 Python 3.14。CueMirror 需要它来只读解析 OneLibrary 数据库。\n\n如尚未安装 Homebrew，请先访问 https://brew.sh。然后在“终端”运行：\nbrew install python@3.14\n\n安装完成后，重新打开 CueMirror。")
         case .runtimeUnavailable: return L("App 内置 SQLCipher 只读运行库缺失。")
         case .queryFailed(let message): return LF("exportLibrary.db 只读查询失败：%@", message)
         case .invalidResponse: return L("exportLibrary.db 返回了无法识别的数据。")
@@ -46,7 +47,6 @@ final class OneLibraryDatabaseReader {
         let fileManager = FileManager.default
         let pythonCandidates = [
             "/opt/homebrew/bin/python3.14",
-            "/opt/homebrew/bin/python3",
         ].map(URL.init(fileURLWithPath:))
         guard let pythonURL = pythonCandidates.first(where: {
             fileManager.isExecutableFile(atPath: $0.path)

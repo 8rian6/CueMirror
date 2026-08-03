@@ -43,7 +43,7 @@
 "exportLibrary.db 只读查询失败：%@" = "The read-only exportLibrary.db query failed: %@";
 "FLAC 在偏移 %llu 处截断。" = "The FLAC file is truncated at offset %llu.";
 "找不到包含样本 %llu 的 FLAC frame。" = "No FLAC frame containing sample %llu was found.";
-"没有找到用于只读 SQLCipher 查询的 Python 3.14。" = "Python 3.14 required for the read-only SQLCipher query was not found.";
+"未找到 Python 3.14。CueMirror 需要它来只读解析 OneLibrary 数据库。\n\n如尚未安装 Homebrew，请先访问 https://brew.sh。然后在“终端”运行：\nbrew install python@3.14\n\n安装完成后，重新打开 CueMirror。" = "Python 3.14 was not found. CueMirror needs it to parse the OneLibrary database in read-only mode.\n\nIf Homebrew is not installed, visit https://brew.sh first. Then run this command in Terminal:\nbrew install python@3.14\n\nAfter installation, reopen CueMirror.";
 "App 内置 SQLCipher 只读运行库缺失。" = "The bundled read-only SQLCipher runtime is missing.";
 "exportLibrary.db 返回了无法识别的数据。" = "exportLibrary.db returned an unrecognized response.";
 "没有找到 HC09–HC16。" = "No HC09–HC16 cues were found.";

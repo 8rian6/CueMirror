@@ -16,11 +16,19 @@ CueMirror preserves Hot Cues, but replaces all existing Memory Cues on each sele
 
 ## Using CueMirror
 
-1. Back up the USB drive.
-2. Open CueMirror and select the root of the OneLibrary drive.
-3. Review the scan results and select tracks or playlists.
-4. Confirm the replacement operation.
-5. Safely eject the drive and verify it on compatible hardware before relying on it for a performance.
+1. Install [Homebrew](https://brew.sh) if needed, then install Python 3.14:
+
+   ```sh
+   brew install python@3.14
+   ```
+
+2. Back up the USB drive.
+3. Open CueMirror and select the root of the OneLibrary drive.
+4. Review the scan results and select tracks or playlists.
+5. Confirm the replacement operation.
+6. Safely eject the drive and verify it on compatible hardware before relying on it for a performance.
+
+If Python 3.14 is missing, CueMirror displays the same installation command in the app. Python is used only for the read-only SQLCipher database query; CueMirror works on a temporary copy and does not connect directly to the database on the USB drive.
 
 ## Building
 
