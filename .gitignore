@@ -1,0 +1,21 @@
+# Xcode and macOS
+.DS_Store
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Release output
+dist/
+
+# Large recordings do not belong in the CueMirror source repository.
+*.mp4
+*.mov
+*.mkv
+
+# Local reverse-engineering fixtures may contain library-derived data.
+CueMirror/Research/Backups/

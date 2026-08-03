@@ -13,5 +13,7 @@ struct CueMirrorApp: App {
         WindowGroup {
             ContentView()
         }
+        .defaultSize(width: 1280, height: 900)
+        .windowResizability(.contentMinSize)
     }
 }

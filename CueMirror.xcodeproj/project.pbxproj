@@ -6,20 +6,62 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 04C1B68F300F4D9D003A2E9E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 04C1B696300F4D9D003A2E9E;
+			remoteInfo = CueMirror;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A1000000000000000000000C /* Open-source files excluded from app resources */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Research/AnlzCueFormatResearch.md",
+				"Research/Backups/Before60sMemoryCue-20260721/ANLZ0000.DAT",
+				"Research/Backups/Before60sMemoryCue-20260721/ANLZ0000.EXT",
+				"Research/MemoryCueBeforeAfterDiff.md",
+				"Research/Successful60sMemoryCueWrite.md",
+				"SQLCipherPython/sqlcipher3/__pycache__/__init__.cpython-314.pyc",
+				"SQLCipherPython/sqlcipher3/__pycache__/dbapi2.cpython-314.pyc",
+			);
+			target = 04C1B696300F4D9D003A2E9E /* CueMirror */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileReference section */
 		04C1B697300F4D9D003A2E9E /* CueMirror.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CueMirror.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000001 /* CueMirrorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CueMirrorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		04C1B699300F4D9D003A2E9E /* CueMirror */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A1000000000000000000000C /* Open-source files excluded from app resources */,
+			);
 			path = CueMirror;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000002 /* CueMirrorTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CueMirrorTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		04C1B694300F4D9D003A2E9E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +75,7 @@
 			isa = PBXGroup;
 			children = (
 				04C1B699300F4D9D003A2E9E /* CueMirror */,
+				A10000000000000000000002 /* CueMirrorTests */,
 				04C1B698300F4D9D003A2E9E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				04C1B697300F4D9D003A2E9E /* CueMirror.app */,
+				A10000000000000000000001 /* CueMirrorTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +114,27 @@
 			productReference = 04C1B697300F4D9D003A2E9E /* CueMirror.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A10000000000000000000003 /* CueMirrorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000009 /* Build configuration list for PBXNativeTarget "CueMirrorTests" */;
+			buildPhases = (
+				A10000000000000000000004 /* Sources */,
+				A10000000000000000000005 /* Frameworks */,
+				A10000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000008 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A10000000000000000000002 /* CueMirrorTests */,
+			);
+			name = CueMirrorTests;
+			productName = CueMirrorTests;
+			productReference = A10000000000000000000001 /* CueMirrorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -90,6 +155,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = 04C1B68E300F4D9D003A2E9E;
@@ -100,12 +166,20 @@
 			projectRoot = "";
 			targets = (
 				04C1B696300F4D9D003A2E9E /* CueMirror */,
+				A10000000000000000000003 /* CueMirrorTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		04C1B695300F4D9D003A2E9E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +196,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 04C1B696300F4D9D003A2E9E /* CueMirror */;
+			targetProxy = A10000000000000000000007 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		04C1B6A4300F4D9E003A2E9E /* Debug */ = {
@@ -262,7 +351,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Brianliu.CueMirror;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -289,11 +378,39 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Brianliu.CueMirror;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A1000000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Brianliu.CueMirrorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CueMirror.app/Contents/MacOS/CueMirror";
+			};
+			name = Debug;
+		};
+		A1000000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Brianliu.CueMirrorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CueMirror.app/Contents/MacOS/CueMirror";
 			};
 			name = Release;
 		};
@@ -314,6 +431,15 @@
 			buildConfigurations = (
 				04C1B6A7300F4D9E003A2E9E /* Debug */,
 				04C1B6A8300F4D9E003A2E9E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000009 /* Build configuration list for PBXNativeTarget "CueMirrorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000000000000000000A /* Debug */,
+				A1000000000000000000000B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
