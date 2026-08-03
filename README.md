@@ -17,9 +17,9 @@ Review the selected tracks and projected changes before confirming the Memory Cu
 ## Current support
 
 - macOS 15.2 or later on Apple silicon
-- English and Simplified Chinese, selected automatically from the macOS language settings
 - OneLibrary USB drives exported by djay Pro
-- FLAC tracks with point cues in Hot Cue slots 9–16
+- The conversion model is theoretically applicable to all audio formats (FLAC has been tested; other formats have not yet been tested or enabled)
+- Point cues in Hot Cue slots 9–16
 - Batch selection by playlist or track
 
 CueMirror preserves Hot Cues, but replaces all existing Memory Cues on each selected track. Hot Cue loops and non-FLAC audio are currently skipped.
