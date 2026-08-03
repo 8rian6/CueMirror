@@ -60,9 +60,6 @@ struct ContentView: View {
                     Image(systemName: "arrow.right")
                         .foregroundStyle(.secondary)
                     Label("2  HC09–HC16 转为 Memory Cue", systemImage: "arrow.triangle.2.circlepath")
-                    Toggle("实验性 WAV / AIFF / MP3", isOn: $model.experimentalAudioFormatsEnabled)
-                        .toggleStyle(.checkbox)
-                        .help(L("未经硬件验证；请只在有备份的 U 盘上测试。FLAC 不受此开关影响。"))
                     Spacer()
                     Button("修改并覆盖 U 盘") { model.writeReplacementToUSB() }
                         .buttonStyle(.borderedProminent)

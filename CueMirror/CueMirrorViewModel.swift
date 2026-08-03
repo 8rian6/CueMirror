@@ -18,8 +18,6 @@ final class CueMirrorViewModel: ObservableObject {
     @Published var isScanning = false
     @Published var scannedFileCount = 0
     @Published var currentScanPath = ""
-    @Published var experimentalAudioFormatsEnabled = false
-
     private let scanner = AnlzScanner()
     private let replacementWriter = HotCueMemoryReplacementWriter()
     private var selectedRootURL: URL?
@@ -144,13 +142,12 @@ final class CueMirrorViewModel: ObservableObject {
                 let locator: any AudioCueLocating
                 if audioExtension == "flac" {
                     locator = FLACAudioCueLocator()
-                } else if experimentalAudioFormatsEnabled, audioExtension == "mp3" {
+                } else if audioExtension == "mp3" {
                     locator = MP3AudioCueLocator()
-                } else if experimentalAudioFormatsEnabled,
-                          ["wav", "wave", "aiff", "aif"].contains(audioExtension) {
+                } else if ["wav", "wave", "aiff", "aif"].contains(audioExtension) {
                     locator = SystemAudioCueLocator()
                 } else {
-                    skipped.append("\(track.title): \(L("非 FLAC 格式需要启用实验性音频格式"))")
+                    skipped.append("\(track.title): \(L("不支持的音频格式"))")
                     continue
                 }
                 let datRelative = track.analysisDataFilePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -168,8 +165,7 @@ final class CueMirrorViewModel: ObservableObject {
                         title: track.title,
                         datURL: datURL,
                         extURL: extURL,
-                        result: result,
-                        isExperimentalFormat: audioExtension != "flac"
+                        result: result
                     ))
                 } catch {
                     skipped.append("\(track.title)：\(error.localizedDescription)")
@@ -180,15 +176,10 @@ final class CueMirrorViewModel: ObservableObject {
             }
             let deleted = prepared.reduce(0) { $0 + $1.result.deletedMemoryCueCount }
             let generated = prepared.reduce(0) { $0 + $1.result.generatedMemoryCueCount }
-            let experimentalCount = prepared.filter(\.isExperimentalFormat).count
             let alert = NSAlert()
             alert.alertStyle = .critical
             alert.messageText = L("覆盖 U 盘中的 Memory Cue？")
-            let replacementSummary = LF("已选择 %lld 首；可写入 %lld 首，跳过 %lld 首。将删除 %lld 条旧 Memory Cue，并只把 HC09–HC16 转换为 %lld 条新 Cue。HC01–HC08 不会复制。", selectedTracks.count, prepared.count, skipped.count, deleted, generated)
-            let experimentalWarning = experimentalCount > 0
-                ? "\n\n" + LF("其中 %lld 首使用未经 CDJ 硬件验证的实验格式。请务必使用可恢复的 U 盘副本测试。", experimentalCount)
-                : ""
-            alert.informativeText = replacementSummary + experimentalWarning
+            alert.informativeText = LF("已选择 %lld 首；可写入 %lld 首，跳过 %lld 首。将删除 %lld 条旧 Memory Cue，并只把 HC09–HC16 转换为 %lld 条新 Cue。HC01–HC08 不会复制。", selectedTracks.count, prepared.count, skipped.count, deleted, generated)
             alert.addButton(withTitle: LF("覆盖 %lld 首曲目", prepared.count))
             alert.addButton(withTitle: L("取消"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -239,6 +230,5 @@ final class CueMirrorViewModel: ObservableObject {
         let datURL: URL
         let extURL: URL
         let result: HotCueMemoryReplacementResult
-        let isExperimentalFormat: Bool
     }
 }

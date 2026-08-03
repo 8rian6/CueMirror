@@ -120,9 +120,6 @@
 "系统音频解析失败（错误码 %d）。" = "System audio parsing failed (error %d).";
 "无法取得目标音频数据包的定位信息。" = "Unable to obtain location information for the target audio packet.";
 "找不到对应的音频文件" = "The corresponding audio file was not found";
-"非 FLAC 格式需要启用实验性音频格式" = "Enable experimental audio formats for non-FLAC files";
-"实验性 WAV / AIFF / MP3" = "Experimental WAV / AIFF / MP3";
-"未经硬件验证；请只在有备份的 U 盘上测试。FLAC 不受此开关影响。" = "Not hardware-verified. Test only on a backed-up USB drive. FLAC is unaffected by this setting.";
-"其中 %lld 首使用未经 CDJ 硬件验证的实验格式。请务必使用可恢复的 U 盘副本测试。" = "%lld tracks use experimental formats that have not been verified on CDJ hardware. Test only with a USB copy you can restore.";
-"无法解析该实验性音频文件。" = "Unable to parse this experimental audio file.";
-"找不到包含样本 %llu 的实验性音频帧。" = "No experimental audio frame containing sample %llu was found.";
+"无法解析该音频文件。" = "Unable to parse this audio file.";
+"找不到包含样本 %llu 的音频帧。" = "No audio frame containing sample %llu was found.";
+"不支持的音频格式" = "Unsupported audio format";

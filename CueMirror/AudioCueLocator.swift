@@ -39,13 +39,13 @@ enum AudioCueLocatorError: LocalizedError, Equatable {
         case .frameNotFound(let sample): return LF("找不到包含样本 %llu 的 FLAC frame。", sample)
         case .systemAudioError(let status): return LF("系统音频解析失败（错误码 %d）。", status)
         case .invalidPacketInfo: return L("无法取得目标音频数据包的定位信息。")
-        case .unsupportedExperimentalFile: return L("无法解析该实验性音频文件。")
-        case .experimentalFrameNotFound(let sample): return LF("找不到包含样本 %llu 的实验性音频帧。", sample)
+        case .unsupportedExperimentalFile: return L("无法解析该音频文件。")
+        case .experimentalFrameNotFound(let sample): return LF("找不到包含样本 %llu 的音频帧。", sample)
         }
     }
 }
 
-/// 实验性通用定位器。使用 macOS AudioToolbox 获取 WAV/AIFF/MP3 的真实数据包位置，
+/// 通用定位器。使用 macOS AudioToolbox 获取 WAV/AIFF 的真实数据包位置，
 /// 与已经验证的 FLAC 定位器完全隔离。
 struct SystemAudioCueLocator: AudioCueLocating {
     func locateCue(atMilliseconds timeMs: UInt64, in audioFile: URL) throws -> AudioCueLocation {
@@ -133,7 +133,7 @@ struct SystemAudioCueLocator: AudioCueLocating {
     }
 }
 
-/// 实验性 MP3 定位器。逐个验证 MPEG 音频帧头，避免使用系统返回的估算字节位置。
+/// MP3 定位器。逐个验证 MPEG 音频帧头，避免使用系统返回的估算字节位置。
 final class MP3AudioCueLocator: AudioCueLocating {
     private var cachedURL: URL?
     private var cachedFrames: [LocatedFrame] = []
