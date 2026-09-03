@@ -4,15 +4,32 @@ CueMirror is an experimental macOS utility that converts djay Pro Hot Cues 9–1
 
 > CueMirror is still in testing. Back up your USB drive data before using it.
 
-## Screenshots
+## What CueMirror does
 
-Select the root of the OneLibrary USB drive—do not select its `PIONEER` or `USBANLZ` subfolder.
+CueMirror bridges metadata that djay Pro stores on a OneLibrary USB drive with the Memory Cue and Memory Loop features available on compatible Pioneer DJ/AlphaTheta players. It works directly with the exported USB structure, lets you choose individual tracks or playlists, previews the source cues and loops, and verifies every file after writing.
 
-![Selecting the root of a OneLibrary USB drive in CueMirror](docs/images/select-onelibrary-usb.png)
+- Keeps Hot Cue slots 1–8 unchanged.
+- Copies Hot Cue slots 9–16 into the track's new Memory set.
+- Converts djay Saved Loop slots 1–8 into Memory Loops.
+- Selects an Active Memory Loop by the original djay Saved Loop slot, even when loop times are in a different chronological order.
+- Supports a global Active Loop default plus a per-track override or `None`.
+- Clears and rebuilds existing Memory Cues and Memory Loops only on selected, processable tracks.
+- Handles FLAC, MP3, WAV, and AIFF automatically.
+- Shows scan and conversion progress so long operations remain visibly distinguishable from a stalled app.
 
-Review the selected tracks and projected changes before confirming the Memory Cue replacement.
+## CueMirror 0.4.0
 
-![CueMirror confirmation before replacing Memory Cues on the USB drive](docs/images/confirm-memory-cue-replacement.png)
+Version 0.4.0 adds the complete Saved Loop workflow: independent Saved Loop detection, Memory Loop generation, and Active Loop selection. It also introduces per-track overrides, debounced track search that preserves matching playlist paths, background conversion with live progress, and a complete English interface.
+
+## Latest interface
+
+Search waits briefly until typing stops, then shows only matching tracks and the playlist hierarchy that contains them. Expanding a track reveals its Hot Cues, Saved Loops, and per-track Active Memory Loop setting.
+
+![CueMirror 0.4 track search, playlist path, Saved Loop details, and per-track Active Memory Loop setting](docs/images/v0.4-search-saved-loop.jpg)
+
+The global Active Memory Loop menu can select `None` or any Saved Loop slot from 1 through 8. Tracks can follow this global choice or override it individually.
+
+![CueMirror 0.4 global Active Memory Loop slot selection and batch track list](docs/images/v0.4-active-loop-settings.jpg)
 
 ## Real-world hardware validation
 
