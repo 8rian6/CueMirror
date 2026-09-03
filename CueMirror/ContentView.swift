@@ -4,6 +4,9 @@ struct ContentView: View {
     @StateObject private var model = CueMirrorViewModel()
     @State private var expandedPlaylistIDs: Set<Int64> = []
     @State private var expandedTrackIDs: Set<Int64> = []
+    @State private var searchInputText = ""
+    @State private var trackSearchText = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -37,7 +40,7 @@ struct ContentView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Text("OneLibrary HC09–HC16 → Memory Cue")
+                Text(L("HC09–HC16 转 Memory Cue · djay Saved Loop 转 Memory Loop · 支持 Active Loop"))
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: 12) {
@@ -49,6 +52,14 @@ struct ContentView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
+                Picker(L("Default Active Memory Loop"), selection: $model.defaultActiveLoopSlot) {
+                    Text("None").tag(0)
+                    ForEach(1...8, id: \.self) { slot in
+                        Text("Saved Loop \(slot)").tag(slot)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
                 Label("CueMirror 还在测试阶段，请自行备份 U 盘数据", systemImage: "exclamationmark.triangle.fill")
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.orange)
@@ -56,13 +67,14 @@ struct ContentView: View {
             }
             if model.summary != nil {
                 HStack(spacing: 10) {
-                    Label("1  清除当前全部 Memory Cue", systemImage: "trash")
+                    Label(L("1  清除当前全部 Memory Cue 和 Memory Loop"), systemImage: "trash")
                     Image(systemName: "arrow.right")
                         .foregroundStyle(.secondary)
-                    Label("2  HC09–HC16 转为 Memory Cue", systemImage: "arrow.triangle.2.circlepath")
+                    Label(L("2  从 HC09–HC16 和 Saved Loop 重建 Memory"), systemImage: "arrow.triangle.2.circlepath")
                     Spacer()
                     Button("修改并覆盖 U 盘") { model.writeReplacementToUSB() }
                         .buttonStyle(.borderedProminent)
+                        .disabled(model.isConverting)
                 }
                 .font(.callout)
             }
@@ -85,6 +97,44 @@ struct ContentView: View {
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let elapsed = Int(context.date.timeIntervalSince(model.scanStartedAt ?? context.date))
+                        Label(
+                            LF("扫描已运行 %lld 秒 · 程序仍在响应", elapsed),
+                            systemImage: "waveform.path.ecg"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                    }
+                }
+                if model.isConverting {
+                    ProgressView(
+                        value: Double(model.conversionProcessedCount),
+                        total: Double(max(model.conversionTotalCount, 1))
+                    )
+                    .progressViewStyle(.linear)
+                    HStack {
+                        Text(model.conversionPhase)
+                        Spacer()
+                        Text("\(model.conversionProcessedCount) / \(model.conversionTotalCount)")
+                    }
+                    .font(.caption)
+                    if !model.currentConversionTrack.isEmpty {
+                        Text(model.currentConversionTrack)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let elapsed = Int(context.date.timeIntervalSince(model.conversionStartedAt ?? context.date))
+                        Label(
+                            LF("处理已运行 %lld 秒 · 程序仍在响应", elapsed),
+                            systemImage: "waveform.path.ecg"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                    }
                 }
                 if let errorMessage = model.errorMessage {
                     Text(errorMessage)
@@ -145,7 +195,23 @@ struct ContentView: View {
                 .frame(minHeight: 150)
             } else {
                 let tracksByID = Dictionary(uniqueKeysWithValues: summary.databaseTracks.map { ($0.contentID, $0) })
+                let visiblePlaylists = summary.databasePlaylists.compactMap {
+                    filteredPlaylist($0, tracksByID: tracksByID)
+                }
                 VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        TextField(L("搜索曲目"), text: $searchInputText)
+                            .onChange(of: searchInputText) { _, newValue in
+                                scheduleSearch(for: newValue)
+                            }
+                        if searchInputText != trackSearchText {
+                            ProgressView().controlSize(.small)
+                            Text(L("等待输入完成…"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                        .textFieldStyle(.roundedBorder)
                     HStack {
                         Button {
                             model.toggleAllPlaylists()
@@ -157,8 +223,12 @@ struct ContentView: View {
                         Spacer()
                     }
                     Divider()
-                    ForEach(summary.databasePlaylists) { playlist in
+                    ForEach(visiblePlaylists) { playlist in
                         playlistNodeView(playlist, tracksByID: tracksByID, depth: 0)
+                    }
+                    if !trackSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       visiblePlaylists.isEmpty {
+                        ContentUnavailableView.search(text: trackSearchText)
                     }
                 }
                 .padding(8)
@@ -178,7 +248,9 @@ struct ContentView: View {
         tracksByID: [Int64: DatabaseTrackHotCueReport],
         depth: Int
     ) -> AnyView {
-        AnyView(
+        let searching = !trackSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let isExpanded = searching || expandedPlaylistIDs.contains(playlist.id)
+        return AnyView(
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Toggle("", isOn: Binding(
@@ -195,7 +267,7 @@ struct ContentView: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: expandedPlaylistIDs.contains(playlist.id) ? "chevron.down" : "chevron.right")
+                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                                 .frame(width: 12)
                             Image(systemName: "music.note.list")
                             Text(playlist.name).fontWeight(.semibold)
@@ -207,10 +279,10 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                if expandedPlaylistIDs.contains(playlist.id) {
+                if isExpanded {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(playlist.trackIDs, id: \.self) { id in
-                            if let track = tracksByID[id] {
+                            if let track = tracksByID[id], trackMatchesSearch(track) {
                                 playlistTrackRow(track)
                             }
                         }
@@ -271,10 +343,85 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                     ForEach(track.hotCues) { cue in hotCueRow(cue) }
+                    if !track.savedLoops.isEmpty {
+                        Divider()
+                        Text("djay Saved Loops").font(.caption).fontWeight(.semibold)
+                        ForEach(track.savedLoops) { loop in
+                            HStack(spacing: 10) {
+                                Image(systemName: "repeat.circle.fill").foregroundStyle(.orange)
+                                Text("Saved Loop \(loop.slot)").fontWeight(.semibold)
+                                Text("\(formatMilliseconds(loop.startTimeMs)) → \(formatMilliseconds(loop.endTimeMs))")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.caption)
+                        }
+                    }
+                    Picker("Active Memory Loop", selection: Binding(
+                        get: { model.activeLoopChoice(for: track.contentID) },
+                        set: { model.setActiveLoopChoice($0, for: track.contentID) }
+                    )) {
+                        Text(LF("Use Global Setting (current: %@)", activeLoopLabel(model.defaultActiveLoopSlot))).tag(-1)
+                        Text("None").tag(0)
+                        ForEach(savedLoopSlots(in: track), id: \.self) { slot in
+                            Text("Saved Loop \(slot)").tag(slot)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
                 }
                 .padding(.leading, 28)
             }
         }
+    }
+
+    private func activeLoopLabel(_ slot: Int) -> String {
+        slot == 0 ? "None" : "Saved Loop \(slot)"
+    }
+
+    private func savedLoopSlots(in track: DatabaseTrackHotCueReport) -> [Int] {
+        track.savedLoops.map(\.slot).sorted()
+    }
+
+    private func trackMatchesSearch(_ track: DatabaseTrackHotCueReport) -> Bool {
+        let query = trackSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return query.isEmpty || track.title.localizedCaseInsensitiveContains(query)
+    }
+
+    private func scheduleSearch(for value: String) {
+        searchDebounceTask?.cancel()
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            trackSearchText = value
+        }
+    }
+
+    /// During search, retain only matching tracks and the ancestor playlist path
+    /// needed to tell the user where each match lives.
+    private func filteredPlaylist(
+        _ playlist: DatabasePlaylistNode,
+        tracksByID: [Int64: DatabaseTrackHotCueReport]
+    ) -> DatabasePlaylistNode? {
+        let query = trackSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return playlist }
+
+        let matchingTrackIDs = playlist.trackIDs.filter { id in
+            tracksByID[id].map(trackMatchesSearch) ?? false
+        }
+        let matchingChildren = playlist.children.compactMap {
+            filteredPlaylist($0, tracksByID: tracksByID)
+        }
+        guard !matchingTrackIDs.isEmpty || !matchingChildren.isEmpty else { return nil }
+
+        var visibleIDs = Set(matchingTrackIDs)
+        for child in matchingChildren { visibleIDs.formUnion(child.allTrackIDs) }
+        return DatabasePlaylistNode(
+            id: playlist.id,
+            name: playlist.name,
+            trackIDs: matchingTrackIDs,
+            children: matchingChildren,
+            allTrackIDs: visibleIDs
+        )
     }
 
     private func hotCueRow(_ cue: Pco2CueReport) -> some View {

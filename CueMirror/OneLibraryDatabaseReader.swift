@@ -5,6 +5,17 @@ struct OneLibraryTrackRecord: Codable, Equatable {
     let title: String
     let audioPath: String
     let analysisDataFilePath: String
+    let savedLoops: [DjaySavedLoop]
+}
+
+struct DjaySavedLoop: Codable, Equatable, Identifiable {
+    let slot: Int
+    let startTimeSeconds: Double
+    let endTimeSeconds: Double
+
+    var id: Int { slot }
+    var startTimeMs: UInt32 { UInt32((startTimeSeconds * 1_000).rounded()) }
+    var endTimeMs: UInt32 { UInt32((endTimeSeconds * 1_000).rounded()) }
 }
 
 struct OneLibraryPlaylistRecord: Codable, Equatable {
@@ -84,11 +95,29 @@ db = sqlite3.connect("file:" + sys.argv[1] + "?mode=ro", uri=True)
 db.row_factory = sqlite3.Row
 db.execute("PRAGMA cipher_compatibility=4")
 db.execute("PRAGMA key='" + sys.argv[2] + "'")
+saved_loops = {}
+for row in db.execute("""
+SELECT d.content_id,
+       CAST(json_extract(j.value, '$.number') AS INTEGER) AS slot,
+       CAST(json_extract(j.value, '$.startTime') AS REAL) AS start_time,
+       CAST(json_extract(j.value, '$.endTime') AS REAL) AS end_time
+FROM djay_content AS d, json_each(d.data, '$.userdata.loopRegions') AS j
+WHERE json_extract(j.value, '$.number') BETWEEN 1 AND 8
+  AND json_extract(j.value, '$.startTime') >= 0
+  AND json_extract(j.value, '$.endTime') > json_extract(j.value, '$.startTime')
+ORDER BY d.content_id, slot
+"""):
+    saved_loops.setdefault(row["content_id"], []).append({
+      "slot": row["slot"],
+      "startTimeSeconds": row["start_time"],
+      "endTimeSeconds": row["end_time"]
+    })
 tracks = [{
   "contentID": row["content_id"],
   "title": row["title"] or "",
   "audioPath": row["path"] or "",
-  "analysisDataFilePath": row["analysisDataFilePath"] or ""
+  "analysisDataFilePath": row["analysisDataFilePath"] or "",
+  "savedLoops": saved_loops.get(row["content_id"], [])
 } for row in db.execute("SELECT content_id,title,path,analysisDataFilePath FROM content ORDER BY content_id")]
 members = {}
 for row in db.execute("SELECT playlist_id,content_id,sequenceNo FROM playlist_content ORDER BY playlist_id,sequenceNo"):

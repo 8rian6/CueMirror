@@ -49,6 +49,39 @@ final class HotCueMemoryReplacementWriterTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: extURL), extBefore)
     }
 
+    func testActiveLoopUsesSavedSlotInsteadOfChronologicalOrder() throws {
+        let result = try HotCueMemoryReplacementWriter().makeOutput(
+            datData: Data(contentsOf: datURL),
+            extData: Data(contentsOf: extURL),
+            audioFile: URL(fileURLWithPath: "/nonexistent/slot-test.flac"),
+            savedLoops: [
+                DjaySavedLoop(slot: 1, startTimeSeconds: 300, endTimeSeconds: 304),
+                DjaySavedLoop(slot: 2, startTimeSeconds: 100, endTimeSeconds: 108),
+            ],
+            activeSavedLoopSlot: 1,
+            locator: StubAudioCueLocator()
+        )
+
+        let outputDAT = try AnlzDocument.parse(result.datData)
+        let memory = outputDAT.sections.compactMap { section -> AnlzCueList? in
+            guard case .cueList(let list) = section.content, list.listType == 0 else { return nil }
+            return list
+        }.first!.cues
+        XCTAssertEqual(memory.map(\.timeMs), [100_000, 137_388, 205_960, 300_000, 358_343, 373_581, 388_819])
+        XCTAssertEqual(memory.first(where: { $0.timeMs == 300_000 })?.status, 4)
+        XCTAssertEqual(memory.first(where: { $0.timeMs == 100_000 })?.status, 0)
+        XCTAssertEqual(memory.first(where: { $0.timeMs == 300_000 })?.cueType, 2)
+        XCTAssertEqual(memory.first(where: { $0.timeMs == 300_000 })?.loopTimeMs, 304_000)
+
+        let outputEXT = try AnlzDocument.parse(result.extData)
+        let extendedMemory = outputEXT.sections.compactMap { section -> AnlzExtendedCueList? in
+            guard case .extendedCueList(let list) = section.content, list.listType == 0 else { return nil }
+            return list
+        }.first!.cues
+        XCTAssertEqual(extendedMemory.first(where: { $0.timeMs == 300_000 })?.cueType, 2)
+        XCTAssertEqual(extendedMemory.first(where: { $0.timeMs == 300_000 })?.loopTimeMs, 304_000)
+    }
+
     private func memoryTimes(_ document: AnlzDocument) -> [UInt32] {
         document.sections.flatMap {
             switch $0.content {

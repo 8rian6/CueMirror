@@ -19,7 +19,7 @@ enum HotCueMemoryReplacementError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingList(let value): return LF("缺少 %@ Cue 列表。", value)
-        case .noSources: return L("没有找到 HC09–HC16。")
+        case .noSources: return L("没有找到 HC09–HC16 或 djay Saved Loop。")
         case .unsupportedCue(let value): return LF("暂不支持：%@", value)
         case .duplicateOrConflict(let value): return value
         case .locatorOverflow: return L("音频定位值超出 ANLZ 字段范围。")
@@ -34,6 +34,8 @@ struct HotCueMemoryReplacementWriter {
         datData: Data,
         extData: Data,
         audioFile: URL,
+        savedLoops: [DjaySavedLoop] = [],
+        activeSavedLoopSlot: Int? = nil,
         locator: any AudioCueLocating = FLACAudioCueLocator()
     ) throws -> HotCueMemoryReplacementResult {
         var dat = try AnlzDocument.parse(datData)
@@ -45,10 +47,20 @@ struct HotCueMemoryReplacementWriter {
             guard case .extendedCueList(let list) = section.content, list.listType == 1 else { return nil }
             return list
         }).first else { throw HotCueMemoryReplacementError.missingList("EXT Hot PCO2") }
-        let sources = extendedHot.cues.filter { (9...16).contains($0.hotCueNumber) }
+        let hotSources = extendedHot.cues
+            .filter { (9...16).contains($0.hotCueNumber) }
+            .map(Source.hotCue)
+        let loopSources = savedLoops.map(Source.savedLoop)
+        let sources = hotSources + loopSources
         guard !sources.isEmpty else { throw HotCueMemoryReplacementError.noSources }
-        guard sources.allSatisfy({ $0.cueType == 1 }) else {
-            throw HotCueMemoryReplacementError.unsupportedCue(L("HC09–HC16 中包含 Loop"))
+        guard sources.count <= 10 else {
+            throw HotCueMemoryReplacementError.unsupportedCue(L("HC09–HC16 与 Saved Loop 合计超过 10 条 Memory 容量"))
+        }
+        guard hotSources.allSatisfy({ $0.cueType == 1 || $0.cueType == 2 }) else {
+            throw HotCueMemoryReplacementError.unsupportedCue(L("HC09–HC16 中包含未知 Cue 类型"))
+        }
+        guard sources.allSatisfy({ $0.cueType != 2 || $0.loopTimeMs > $0.timeMs }) else {
+            throw HotCueMemoryReplacementError.unsupportedCue(L("存在 Loop Out 不大于 Loop In 的 Saved Loop"))
         }
         let grouped = Dictionary(grouping: sources, by: { $0.timeMs })
         guard grouped.values.allSatisfy({ $0.count == 1 }) else {
@@ -56,7 +68,7 @@ struct HotCueMemoryReplacementWriter {
         }
         let sortedSources = sources.sorted {
             if $0.timeMs != $1.timeMs { return $0.timeMs < $1.timeMs }
-            return $0.hotCueNumber < $1.hotCueNumber
+            return $0.sortSlot < $1.sortSlot
         }
 
         let existingDATMemory = dat.sections.compactMap { section -> AnlzCueList? in
@@ -79,28 +91,29 @@ struct HotCueMemoryReplacementWriter {
                 throw HotCueMemoryReplacementError.locatorOverflow
             }
 
-            var pcpt = datTemplate ?? matchingDATSource(for: source, in: dat) ?? standardMemoryPCPT()
+            var pcpt = datTemplate ?? source.hotCue.flatMap { matchingDATSource(for: $0, in: dat) } ?? standardMemoryPCPT()
             pcpt.hotCueNumber = 0
-            pcpt.status = 0
+            let isActiveLoop = activeSavedLoopSlot.map { source.savedLoopSlot == $0 } ?? false
+            pcpt.status = isActiveLoop ? 4 : 0
             pcpt.unknown1 = 0x0001_0000
             pcpt.orderFirst = index == 0 ? UInt16.max : UInt16(index - 1)
             pcpt.orderLast = index == sortedSources.count - 1 ? UInt16.max : UInt16(index + 1)
-            pcpt.cueType = 1
+            pcpt.cueType = source.cueType
             pcpt.timeMs = source.timeMs
-            pcpt.loopTimeMs = UInt32.max
+            pcpt.loopTimeMs = source.cueType == 2 ? source.loopTimeMs : UInt32.max
             pcpt.unknownTrailing = Data(repeating: 0, count: 16)
             newPCPT.append(pcpt)
 
             var pcp2 = extTemplate ?? standardMemoryPCP2()
             pcp2.hotCueNumber = 0
-            pcp2.cueType = 1
+            pcp2.cueType = source.cueType
             pcp2.timeMs = source.timeMs
-            pcp2.loopTimeMs = UInt32.max
+            pcp2.loopTimeMs = source.cueType == 2 ? source.loopTimeMs : UInt32.max
             pcp2.colorID = 0 // 已确认的默认绿色；自定义颜色映射尚未启用。
             if !pcp2.unknownBeforeLoop.isEmpty { pcp2.unknownBeforeLoop[0] = 1 }
-            pcp2.loopNumerator = 0
-            pcp2.loopDenominator = 0
-            pcp2.comment = source.comment
+            pcp2.loopNumerator = source.cueType == 2 ? source.loopNumerator : 0
+            pcp2.loopDenominator = source.cueType == 2 ? source.loopDenominator : 0
+            pcp2.comment = .init(value: source.comment ?? "")
             pcp2.hotCueColorIndex = 0
             pcp2.colorRed = 0
             pcp2.colorGreen = 0
@@ -138,6 +151,14 @@ struct HotCueMemoryReplacementWriter {
         let expectedTimes = sortedSources.map(\.timeMs)
         guard memoryTimes(datReadback) == expectedTimes, memoryTimes(extReadback) == expectedTimes else {
             throw HotCueMemoryReplacementError.verificationFailed(L("Memory Cue 时间或排序不一致"))
+        }
+        let activeStatuses = datReadback.sections.flatMap { section -> [UInt32] in
+            guard case .cueList(let list) = section.content, list.listType == 0 else { return [] }
+            return list.cues.filter { $0.cueType == 2 }.map(\.status)
+        }
+        guard activeStatuses.filter({ $0 == 4 }).count <= 1,
+              activeStatuses.allSatisfy({ $0 == 0 || $0 == 4 }) else {
+            throw HotCueMemoryReplacementError.verificationFailed(L("Active Memory Loop 标志不一致"))
         }
         return HotCueMemoryReplacementResult(
             datData: outputDAT,
@@ -263,6 +284,36 @@ struct HotCueMemoryReplacementWriter {
             default: return []
             }
         }
+    }
+}
+
+private struct Source {
+    let hotCue: AnlzExtendedCue?
+    let savedLoopSlot: Int?
+    let cueType: UInt8
+    let timeMs: UInt32
+    let loopTimeMs: UInt32
+    let loopNumerator: UInt16?
+    let loopDenominator: UInt16?
+    let comment: String?
+    let sortSlot: Int
+
+    static func hotCue(_ cue: AnlzExtendedCue) -> Self {
+        Self(
+            hotCue: cue, savedLoopSlot: nil, cueType: cue.cueType,
+            timeMs: cue.timeMs, loopTimeMs: cue.loopTimeMs,
+            loopNumerator: cue.loopNumerator, loopDenominator: cue.loopDenominator,
+            comment: cue.comment?.value, sortSlot: 100 + Int(cue.hotCueNumber)
+        )
+    }
+
+    static func savedLoop(_ loop: DjaySavedLoop) -> Self {
+        Self(
+            hotCue: nil, savedLoopSlot: loop.slot, cueType: 2,
+            timeMs: loop.startTimeMs, loopTimeMs: loop.endTimeMs,
+            loopNumerator: 0, loopDenominator: 0,
+            comment: nil, sortSlot: loop.slot
+        )
     }
 }
 

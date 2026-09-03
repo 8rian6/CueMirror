@@ -32,7 +32,7 @@ enum AudioCueLocatorError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedFile: return L("目前只支持原生 FLAC。")
+        case .unsupportedFile: return L("文件扩展名是 FLAC，但未找到可识别的 FLAC 音频流。")
         case .truncated(let offset): return LF("FLAC 在偏移 %llu 处截断。", offset)
         case .missingStreamInfo: return L("FLAC 缺少 STREAMINFO。")
         case .invalidStreamInfo: return L("FLAC STREAMINFO 无效。")
@@ -297,10 +297,10 @@ struct FLACAudioCueLocator: AudioCueLocating {
     }
 
     private func parseMetadata(_ data: Data) throws -> Stream {
-        guard data.count >= 8, data.prefix(4) == Data("fLaC".utf8) else {
+        guard let flacOffset = flacMarkerOffset(in: data), flacOffset + 8 <= data.count else {
             throw AudioCueLocatorError.unsupportedFile
         }
-        var cursor = 4
+        var cursor = flacOffset + 4
         var minimumBlockSize: UInt32?
         var maximumBlockSize: UInt32?
         var sampleRate: UInt32?
@@ -350,6 +350,22 @@ struct FLACAudioCueLocator: AudioCueLocating {
             audioOffset: cursor,
             seekPoints: seekPoints.sorted { $0.sampleNumber < $1.sampleNumber }
         )
+    }
+
+    /// FLAC files exported by djay may carry an ID3v2 block before the native
+    /// FLAC marker. Its size uses four 7-bit (synchsafe) bytes and excludes the
+    /// ten-byte ID3 header. A footer, when declared, adds another ten bytes.
+    private func flacMarkerOffset(in data: Data) -> Int? {
+        let marker = Data("fLaC".utf8)
+        if data.count >= 4, data.prefix(4) == marker { return 0 }
+        guard data.count >= 14, data.prefix(3) == Data("ID3".utf8) else { return nil }
+        let sizeBytes = data[6...9]
+        guard sizeBytes.allSatisfy({ $0 & 0x80 == 0 }) else { return nil }
+        let payloadSize = sizeBytes.reduce(0) { ($0 << 7) | Int($1) }
+        let hasFooter = data[5] & 0x10 != 0
+        let offset = 10 + payloadSize + (hasFooter ? 10 : 0)
+        guard offset + 4 <= data.count, data[offset..<(offset + 4)] == marker else { return nil }
+        return offset
     }
 
     private func parseFrameHeader(_ data: Data, at offset: Int, stream: Stream) -> Frame? {

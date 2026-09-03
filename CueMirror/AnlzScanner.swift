@@ -134,6 +134,7 @@ struct DatabaseTrackHotCueReport: Identifiable {
     let analysisDataFilePath: String
     let extendedAnalysisPath: String
     let hotCues: [Pco2CueReport]
+    let savedLoops: [DjaySavedLoop]
     let existingMemoryCueCount: Int
     let generatedMemoryCueCount: Int
     let conversionSkipReason: String?
@@ -307,6 +308,12 @@ final class AnlzScanner {
                     continue
                 }
 
+                let relativePath = makeRelativePath(
+                    fileURL: fileURL,
+                    rootURL: rootURL
+                )
+                progress?(reports.count, LF("正在读取：%@", relativePath))
+
                 let data: Data
 
                 do {
@@ -333,11 +340,6 @@ final class AnlzScanner {
                             offset: $0
                         )
                     }
-
-                let relativePath = makeRelativePath(
-                    fileURL: fileURL,
-                    rootURL: rootURL
-                )
 
                 reports.append(
                     AnlzFileReport(
@@ -397,6 +399,15 @@ final class AnlzScanner {
                         .filter { $0.hotCueNumber > 0 }
                         .sorted { $0.hotCueNumber < $1.hotCueNumber } ?? []
                     let plan = report?.replacementPlan
+                    let generatedCount = (plan?.generatedMemoryCueCount ?? 0) + track.savedLoops.count
+                    let combinedSkipReason: String?
+                    if generatedCount > 10 {
+                        combinedSkipReason = L("HC09–HC16 与 Saved Loop 合计超过 10 条 Memory 容量")
+                    } else if plan?.replacementCues.isEmpty == false || !track.savedLoops.isEmpty {
+                        combinedSkipReason = nil
+                    } else {
+                        combinedSkipReason = plan?.skipReason
+                    }
                     return DatabaseTrackHotCueReport(
                         contentID: track.contentID,
                         title: track.title,
@@ -404,9 +415,10 @@ final class AnlzScanner {
                         analysisDataFilePath: track.analysisDataFilePath,
                         extendedAnalysisPath: "/" + normalized,
                         hotCues: hotCues,
+                        savedLoops: track.savedLoops,
                         existingMemoryCueCount: plan?.existingMemoryCues.count ?? 0,
-                        generatedMemoryCueCount: plan?.generatedMemoryCueCount ?? 0,
-                        conversionSkipReason: plan?.skipReason
+                        generatedMemoryCueCount: generatedCount,
+                        conversionSkipReason: combinedSkipReason
                     )
                 }
                 databasePlaylists = makePlaylistTree(catalog.playlists)
@@ -425,6 +437,7 @@ final class AnlzScanner {
                             analysisDataFilePath: report.relativePath,
                             extendedAnalysisPath: "/" + report.relativePath,
                             hotCues: report.allHotCues,
+                            savedLoops: [],
                             existingMemoryCueCount: report.memoryCues.count,
                             generatedMemoryCueCount: report.replacementPlan.generatedMemoryCueCount,
                             conversionSkipReason: report.replacementPlan.skipReason

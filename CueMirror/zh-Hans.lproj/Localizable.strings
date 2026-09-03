@@ -1,1 +1,6 @@
 /* Chinese source strings are used as the localization keys and fallback values. */
+"HC09–HC16 转 Memory Cue · djay Saved Loop 转 Memory Loop · 支持 Active Loop" = "HC09–HC16 转 Memory Cue · djay Saved Loop 转 Memory Loop · 支持 Active Loop";
+"Default Active Memory Loop" = "默认 Active Memory Loop";
+"1  清除当前全部 Memory Cue 和 Memory Loop" = "1  清除当前全部 Memory Cue 和 Memory Loop";
+"2  从 HC09–HC16 和 Saved Loop 重建 Memory" = "2  从 HC09–HC16 和 Saved Loop 重建 Memory";
+"Use Global Setting (current: %@)" = "使用全局设置（当前：%@）";
