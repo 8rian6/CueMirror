@@ -109,7 +109,7 @@ struct HotCueMemoryReplacementWriter {
             pcp2.cueType = source.cueType
             pcp2.timeMs = source.timeMs
             pcp2.loopTimeMs = source.cueType == 2 ? source.loopTimeMs : UInt32.max
-            pcp2.colorID = 0 // 已确认的默认绿色；自定义颜色映射尚未启用。
+            pcp2.colorID = source.memoryColorID
             if !pcp2.unknownBeforeLoop.isEmpty { pcp2.unknownBeforeLoop[0] = 1 }
             pcp2.loopNumerator = source.cueType == 2 ? source.loopNumerator : 0
             pcp2.loopDenominator = source.cueType == 2 ? source.loopDenominator : 0
@@ -297,13 +297,20 @@ private struct Source {
     let loopDenominator: UInt16?
     let comment: String?
     let sortSlot: Int
+    let memoryColorID: UInt8
 
     static func hotCue(_ cue: AnlzExtendedCue) -> Self {
         Self(
             hotCue: cue, savedLoopSlot: nil, cueType: cue.cueType,
             timeMs: cue.timeMs, loopTimeMs: cue.loopTimeMs,
             loopNumerator: cue.loopNumerator, loopDenominator: cue.loopDenominator,
-            comment: cue.comment?.value, sortSlot: 100 + Int(cue.hotCueNumber)
+            comment: cue.comment?.value, sortSlot: 100 + Int(cue.hotCueNumber),
+            memoryColorID: MemoryCueColorMapper.closest(
+                red: cue.colorRed,
+                green: cue.colorGreen,
+                blue: cue.colorBlue,
+                defaultColorID: 0
+            )
         )
     }
 
@@ -312,8 +319,49 @@ private struct Source {
             hotCue: nil, savedLoopSlot: loop.slot, cueType: 2,
             timeMs: loop.startTimeMs, loopTimeMs: loop.endTimeMs,
             loopNumerator: 0, loopDenominator: 0,
-            comment: nil, sortSlot: loop.slot
+            comment: nil, sortSlot: loop.slot,
+            memoryColorID: loop.colorRGB.map {
+                MemoryCueColorMapper.closest(
+                    red: $0.red,
+                    green: $0.green,
+                    blue: $0.blue,
+                    defaultColorID: 7
+                )
+            } ?? 7
         )
+    }
+}
+
+/// Rekordbox/CDJ Memory Cue palette: Pink, Red, Orange, Yellow, Green, Aqua, Blue, Purple.
+enum MemoryCueColorMapper {
+    private static let palette: [(id: UInt8, red: Int, green: Int, blue: Int)] = [
+        (1, 255, 0, 127),
+        (2, 255, 0, 0),
+        (3, 255, 128, 0),
+        (4, 255, 255, 0),
+        (5, 0, 255, 0),
+        (6, 0, 255, 255),
+        (7, 48, 90, 255),
+        (8, 180, 50, 255),
+    ]
+
+    static func closest(red: UInt8?, green: UInt8?, blue: UInt8?, defaultColorID: UInt8) -> UInt8 {
+        guard let red, let green, let blue, red != 0 || green != 0 || blue != 0 else {
+            return defaultColorID
+        }
+        return palette.min {
+            distance(from: (red, green, blue), to: $0) < distance(from: (red, green, blue), to: $1)
+        }!.id
+    }
+
+    private static func distance(
+        from source: (UInt8, UInt8, UInt8),
+        to target: (id: UInt8, red: Int, green: Int, blue: Int)
+    ) -> Int {
+        let red = Int(source.0) - target.red
+        let green = Int(source.1) - target.green
+        let blue = Int(source.2) - target.blue
+        return red * red + green * green + blue * blue
     }
 }
 

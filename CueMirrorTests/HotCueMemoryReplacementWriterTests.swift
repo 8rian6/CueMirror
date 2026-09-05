@@ -9,6 +9,19 @@ final class HotCueMemoryReplacementWriterTests: XCTestCase {
         ProcessInfo.processInfo.environment["CUEMIRROR_TEST_FLAC"] ?? "/nonexistent/CueMirror-test.flac"
     )
 
+    func testMapsSourceRGBToTheEightMemoryCueColorsAndUsesRequestedDefaults() {
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 255, green: 0, blue: 127, defaultColorID: 0), 1)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 255, green: 0, blue: 0, defaultColorID: 0), 2)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 255, green: 128, blue: 0, defaultColorID: 0), 3)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 255, green: 255, blue: 0, defaultColorID: 0), 4)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 0, green: 255, blue: 0, defaultColorID: 0), 5)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 0, green: 255, blue: 255, defaultColorID: 0), 6)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 48, green: 90, blue: 255, defaultColorID: 0), 7)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 180, green: 50, blue: 255, defaultColorID: 0), 8)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: 0, green: 0, blue: 0, defaultColorID: 0), 0)
+        XCTAssertEqual(MemoryCueColorMapper.closest(red: nil, green: nil, blue: nil, defaultColorID: 7), 7)
+    }
+
     func testClearsOldMemoryAndRebuildsFromHC09ThroughHC16() throws {
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
             throw XCTSkip("FLAC 研究样本不存在。")
@@ -55,7 +68,12 @@ final class HotCueMemoryReplacementWriterTests: XCTestCase {
             extData: Data(contentsOf: extURL),
             audioFile: URL(fileURLWithPath: "/nonexistent/slot-test.flac"),
             savedLoops: [
-                DjaySavedLoop(slot: 1, startTimeSeconds: 300, endTimeSeconds: 304),
+                DjaySavedLoop(
+                    slot: 1,
+                    startTimeSeconds: 300,
+                    endTimeSeconds: 304,
+                    colorRGB: DjayCueColor(red: 245, green: 20, blue: 20)
+                ),
                 DjaySavedLoop(slot: 2, startTimeSeconds: 100, endTimeSeconds: 108),
             ],
             activeSavedLoopSlot: 1,
@@ -80,6 +98,8 @@ final class HotCueMemoryReplacementWriterTests: XCTestCase {
         }.first!.cues
         XCTAssertEqual(extendedMemory.first(where: { $0.timeMs == 300_000 })?.cueType, 2)
         XCTAssertEqual(extendedMemory.first(where: { $0.timeMs == 300_000 })?.loopTimeMs, 304_000)
+        XCTAssertEqual(extendedMemory.first(where: { $0.timeMs == 300_000 })?.colorID, 2)
+        XCTAssertEqual(extendedMemory.first(where: { $0.timeMs == 100_000 })?.colorID, 7)
     }
 
     private func memoryTimes(_ document: AnlzDocument) -> [UInt32] {

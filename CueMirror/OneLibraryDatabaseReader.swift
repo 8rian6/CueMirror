@@ -12,10 +12,29 @@ struct DjaySavedLoop: Codable, Equatable, Identifiable {
     let slot: Int
     let startTimeSeconds: Double
     let endTimeSeconds: Double
+    let colorRGB: DjayCueColor?
+
+    init(
+        slot: Int,
+        startTimeSeconds: Double,
+        endTimeSeconds: Double,
+        colorRGB: DjayCueColor? = nil
+    ) {
+        self.slot = slot
+        self.startTimeSeconds = startTimeSeconds
+        self.endTimeSeconds = endTimeSeconds
+        self.colorRGB = colorRGB
+    }
 
     var id: Int { slot }
     var startTimeMs: UInt32 { UInt32((startTimeSeconds * 1_000).rounded()) }
     var endTimeMs: UInt32 { UInt32((endTimeSeconds * 1_000).rounded()) }
+}
+
+struct DjayCueColor: Codable, Equatable {
+    let red: UInt8
+    let green: UInt8
+    let blue: UInt8
 }
 
 struct OneLibraryPlaylistRecord: Codable, Equatable {
@@ -96,21 +115,65 @@ db.row_factory = sqlite3.Row
 db.execute("PRAGMA cipher_compatibility=4")
 db.execute("PRAGMA key='" + sys.argv[2] + "'")
 saved_loops = {}
+def byte_component(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if 0 <= value <= 1:
+        value *= 255
+    if not 0 <= value <= 255:
+        return None
+    return int(round(value))
+
+def rgb_components(value):
+    if isinstance(value, str):
+        text = value.strip().lower().removeprefix("#").removeprefix("0x")
+        if len(text) == 8:
+            text = text[-6:]
+        if len(text) == 6:
+            try:
+                return [int(text[0:2], 16), int(text[2:4], 16), int(text[4:6], 16)]
+            except ValueError:
+                return None
+    if isinstance(value, (list, tuple)) and len(value) >= 3:
+        components = [byte_component(item) for item in value[:3]]
+        return components if all(item is not None for item in components) else None
+    if isinstance(value, dict):
+        for keys in (("red", "green", "blue"), ("r", "g", "b")):
+            if all(key in value for key in keys):
+                components = [byte_component(value[key]) for key in keys]
+                return components if all(item is not None for item in components) else None
+    return None
+
+def loop_color(loop):
+    for key in ("color", "colorHex", "hexColor", "buttonColor", "cueColor", "rgb"):
+        components = rgb_components(loop.get(key))
+        if components is not None:
+            return {"red": components[0], "green": components[1], "blue": components[2]}
+    for keys in (("colorRed", "colorGreen", "colorBlue"), ("red", "green", "blue")):
+        if all(key in loop for key in keys):
+            components = [byte_component(loop[key]) for key in keys]
+            if all(item is not None for item in components):
+                return {"red": components[0], "green": components[1], "blue": components[2]}
+    return None
+
 for row in db.execute("""
 SELECT d.content_id,
        CAST(json_extract(j.value, '$.number') AS INTEGER) AS slot,
        CAST(json_extract(j.value, '$.startTime') AS REAL) AS start_time,
-       CAST(json_extract(j.value, '$.endTime') AS REAL) AS end_time
+       CAST(json_extract(j.value, '$.endTime') AS REAL) AS end_time,
+       j.value AS loop_json
 FROM djay_content AS d, json_each(d.data, '$.userdata.loopRegions') AS j
 WHERE json_extract(j.value, '$.number') BETWEEN 1 AND 8
   AND json_extract(j.value, '$.startTime') >= 0
   AND json_extract(j.value, '$.endTime') > json_extract(j.value, '$.startTime')
 ORDER BY d.content_id, slot
 """):
+    loop = json.loads(row["loop_json"])
     saved_loops.setdefault(row["content_id"], []).append({
       "slot": row["slot"],
       "startTimeSeconds": row["start_time"],
-      "endTimeSeconds": row["end_time"]
+      "endTimeSeconds": row["end_time"],
+      "colorRGB": loop_color(loop)
     })
 tracks = [{
   "contentID": row["content_id"],

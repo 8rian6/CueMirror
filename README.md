@@ -11,11 +11,16 @@ CueMirror bridges metadata that djay Pro stores on a OneLibrary USB drive with t
 - Keeps Hot Cue slots 1–8 unchanged.
 - Copies Hot Cue slots 9–16 into the track's new Memory set.
 - Converts djay Saved Loop slots 1–8 into Memory Loops.
+- Maps Hot Cue and Saved Loop colors to the closest supported CDJ Memory Cue color; Saved Loops without stored color use blue.
 - Selects an Active Memory Loop by the original djay Saved Loop slot, even when loop times are in a different chronological order.
 - Supports a global Active Loop default plus a per-track override or `None`.
 - Clears and rebuilds existing Memory Cues and Memory Loops only on selected, processable tracks.
 - Handles FLAC, MP3, WAV, and AIFF automatically.
 - Shows scan and conversion progress so long operations remain visibly distinguishable from a stalled app.
+
+## CueMirror 0.5.0
+
+Version 0.5.0 preserves Hot Cue 09–16 colors when creating Memory Cues and uses any recognizable Saved Loop color metadata when creating Memory Loops. Colors are mapped to the closest option in the eight-color Rekordbox/CDJ Memory Cue palette; Saved Loops without color metadata default to blue. The previously hardware-tested Memory Loop and Active Memory Loop behavior is unchanged.
 
 ## CueMirror 0.4.0
 
